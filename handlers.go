@@ -10,7 +10,7 @@ import (
 )
 
 type Payload struct {
-	URL string
+	URL string `json:"url" validate:"required"`
 }
 
 func (app *application) handleShorten(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +38,7 @@ func (app *application) handleShorten(w http.ResponseWriter, r *http.Request) {
 		ShortCode: shortCode,
 	}
 
-	if err := app.CreateURL(r.Context(), entry); err != nil {
+	if err := app.storage.URLS.Create(r.Context(), entry); err != nil {
 		app.internalError(w, r, err)
 		return
 	}
@@ -57,7 +57,7 @@ func (app *application) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("[%v] request", shortCode)
-	entry, err := app.GetURLByShortCode(r.Context(), shortCode)
+	entry, err := app.storage.URLS.GetByShortCode(r.Context(), shortCode)
 	if err != nil {
 		switch err {
 		case ErrNotFound:
@@ -72,7 +72,7 @@ func (app *application) handleGet(w http.ResponseWriter, r *http.Request) {
 	entry.UpdatedAt = time.Now().Format(time.RFC3339)
 	entry.AccessCount++
 
-	if err := app.UpdateStats(r.Context(), entry); err != nil {
+	if err := app.storage.URLS.UpdateStats(r.Context(), entry); err != nil {
 		switch err {
 		case ErrNotFound:
 			app.notFound(w, r, err)
@@ -90,7 +90,7 @@ func (app *application) handleGet(w http.ResponseWriter, r *http.Request) {
 func (app *application) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	shortCode := chi.URLParam(r, "shortCode")
 
-	entry, err := app.GetURLByShortCode(r.Context(), shortCode)
+	entry, err := app.storage.URLS.GetByShortCode(r.Context(), shortCode)
 	if err != nil {
 		switch err {
 		case ErrNotFound:
@@ -122,7 +122,7 @@ func (app *application) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	entry.URL = payload.URL
 	entry.UpdatedAt = time.Now().Format(time.RFC3339)
 
-	if err := app.UpdateURL(r.Context(), entry); err != nil {
+	if err := app.storage.URLS.Update(r.Context(), entry); err != nil {
 		switch err {
 		case ErrNotFound:
 			app.notFound(w, r, err)
@@ -140,7 +140,7 @@ func (app *application) handleUpdate(w http.ResponseWriter, r *http.Request) {
 func (app *application) handleDelete(w http.ResponseWriter, r *http.Request) {
 	shortCode := chi.URLParam(r, "shortCode")
 
-	if err := app.DeleteURL(r.Context(), shortCode); err != nil {
+	if err := app.storage.URLS.Delete(r.Context(), shortCode); err != nil {
 		switch err {
 		case ErrNotFound:
 			app.notFound(w, r, err)

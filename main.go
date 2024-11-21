@@ -8,15 +8,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err := NewStorage(cfg.dbCfg.addr)
+	db, err := NewPostgresConn(cfg.dbCfg.addr)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
+	storage := NewStorage(db)
+
 	app := &application{
 		cfg:     cfg,
-		storage: db,
+		storage: storage,
 	}
 
 	mux := app.mount()
