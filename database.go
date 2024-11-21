@@ -11,7 +11,6 @@ import (
 
 var (
 	QueryTimeout = 5 * time.Second
-	ErrNotFound  = errors.New("entry not found")
 )
 
 type ShortURL struct {
@@ -35,8 +34,8 @@ func NewStorage(addr string) (*sql.DB, error) {
 func (app *application) CreateURL(ctx context.Context, entry *ShortURL) error {
 	query := `
 		INSERT INTO urls (url, short_code)
-		VALUES $1, $2
-		RETURNING (id, created_at, updated_at)
+		VALUES ($1, $2)
+		RETURNING id, created_at, updated_at
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
@@ -59,11 +58,11 @@ func (app *application) CreateURL(ctx context.Context, entry *ShortURL) error {
 	return nil
 }
 
-func (app *application) GetURLByID(ctx context.Context, id int64) (*ShortURL, error) {
+func (app *application) GetURLByShortCode(ctx context.Context, code string) (*ShortURL, error) {
 	query := `
-		SELECT (id, url, short_code, created_at, updated_at)
+		SELECT id, url, short_code, created_at, updated_at
 		FROM urls
-		WHERE id = $1
+		WHERE short_code = $1
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
@@ -74,7 +73,7 @@ func (app *application) GetURLByID(ctx context.Context, id int64) (*ShortURL, er
 	err := app.storage.QueryRowContext(
 		ctx,
 		query,
-		id,
+		code,
 	).Scan(
 		&entry.ID,
 		&entry.URL,
@@ -98,8 +97,8 @@ func (app *application) GetURLByID(ctx context.Context, id int64) (*ShortURL, er
 func (app *application) UpdateURL(ctx context.Context, entry *ShortURL) error {
 	query := `
 		UPDATE urls
-		SET updated_at = $1
-		WHERE id = $2
+		SET url = $1, updated_at = $2
+		WHERE id = $3
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
@@ -108,6 +107,7 @@ func (app *application) UpdateURL(ctx context.Context, entry *ShortURL) error {
 	res, err := app.storage.ExecContext(
 		ctx,
 		query,
+		entry.URL,
 		entry.UpdatedAt,
 		entry.ID,
 	)
@@ -127,10 +127,10 @@ func (app *application) UpdateURL(ctx context.Context, entry *ShortURL) error {
 	return nil
 }
 
-func (app *application) DeleteURL(ctx context.Context, id int64) error {
+func (app *application) DeleteURL(ctx context.Context, code string) error {
 	query := `
 			DELETE FROM urls
-			WHERE id = $1
+			WHERE short_code = $1
 	`
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
@@ -139,7 +139,7 @@ func (app *application) DeleteURL(ctx context.Context, id int64) error {
 	res, err := app.storage.ExecContext(
 		ctx,
 		query,
-		id,
+		code,
 	)
 	if err != nil {
 		return err

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 type application struct {
@@ -28,20 +28,28 @@ func (app *application) mount() http.Handler {
 	// processing should be stopped.
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	r.Get("/shorten", app.handleShorten)
+	r.Route("/shorten", func(r chi.Router) {
+		r.Post("/", app.handleShorten)
 
+		r.Route("/{shortCode}", func(r chi.Router) {
+			r.Get("/", app.handleGet)
+			r.Put("/", app.handleUpdate)
+			r.Delete("/", app.handleDelete)
+			r.Get("/stats", app.handleStats)
+		})
+	})
 	return r
 }
 
 func (app *application) run(mux http.Handler) error {
 	srv := http.Server{
-		Addr:         app.cfg.addr,
+		Addr:         app.cfg.serverCfg.addr,
 		Handler:      mux,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  1 * time.Minute,
 	}
 
-	log.Printf("server listening in port %v...", app.cfg.addr)
+	log.Printf("server listening in port %v...", app.cfg.serverCfg.addr)
 	return srv.ListenAndServe()
 }
