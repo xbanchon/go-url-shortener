@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -26,7 +27,10 @@ func writeJSONError(w http.ResponseWriter, status int, message string) error {
 	return writeJSON(w, status, &envelope{Error: message})
 }
 
-func readJSON(w http.ResponseWriter, r *http.Request, data any) error {
+func readJSON(r *http.Request, data any) error {
+	if r.Body == nil {
+		return errors.New("missing request body")
+	}
 	decoder := json.NewDecoder(r.Body)
 
 	return decoder.Decode(data)

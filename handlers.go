@@ -16,7 +16,7 @@ type Payload struct {
 func (app *application) handleShorten(w http.ResponseWriter, r *http.Request) {
 	var payload Payload
 
-	if err := readJSON(w, r, &payload); err != nil {
+	if err := readJSON(r, &payload); err != nil {
 		app.badRequest(w, r, err)
 		return
 	}
@@ -103,7 +103,7 @@ func (app *application) handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	var payload Payload
 
-	if err := readJSON(w, r, &payload); err != nil {
+	if err := readJSON(r, &payload); err != nil {
 		app.badRequest(w, r, err)
 		return
 	}
