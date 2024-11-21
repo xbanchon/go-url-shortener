@@ -50,7 +50,6 @@ func (app *application) handleShorten(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *application) handleGet(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Request URI: %v", r.URL)
 	shortCode := chi.URLParam(r, "shortCode")
 	if shortCode == "" {
 		app.badRequest(w, r, errors.New("no short code provided"))
@@ -60,6 +59,20 @@ func (app *application) handleGet(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[%v] request", shortCode)
 	entry, err := app.GetURLByShortCode(r.Context(), shortCode)
 	if err != nil {
+		switch err {
+		case ErrNotFound:
+			app.notFound(w, r, err)
+		default:
+			app.internalError(w, r, err)
+		}
+		return
+	}
+
+	// Update short url stats
+	entry.UpdatedAt = time.Now().Format(time.RFC3339)
+	entry.AccessCount++
+
+	if err := app.UpdateStats(r.Context(), entry); err != nil {
 		switch err {
 		case ErrNotFound:
 			app.notFound(w, r, err)
